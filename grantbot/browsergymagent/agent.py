@@ -1,8 +1,11 @@
-from browsergym.experiments import Agent, AgentInfo
+from browsergym.experiments import Agent
+from browsergym.experiments.agent import AgentInfo
 from browsergym.core.action.highlevel import HighLevelActionSet
 from browsergym.utils.obs import flatten_axtree_to_str
 from openai import OpenAI
 from typing import Any
+
+from llm_utils import DEFAULT_MODEL
 
 
 class WebResearchAgent(Agent):
@@ -26,7 +29,7 @@ class WebResearchAgent(Agent):
             "axtree_txt": flatten_axtree_to_str(obs["axtree_object"]),
         }
 
-    def __init__(self, model_name: str = "gpt-4o") -> None:
+    def __init__(self, model_name: str = DEFAULT_MODEL) -> None:
         super().__init__()
         self.model_name = model_name
         self.openai_client = OpenAI()
