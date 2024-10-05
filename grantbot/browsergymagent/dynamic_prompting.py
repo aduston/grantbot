@@ -39,7 +39,7 @@ class Flags:
     ] = "bid"
 
 
-class PromptElement:
+class PromptElement(abc.ABC):
     """Base class for all prompt elements. Prompt elements can be hidden.
 
     Prompt elements are used to build the prompt. Use flags to control which
@@ -106,6 +106,9 @@ class PromptElement:
             return ""
 
     def _parse_answer(self, text_answer) -> dict:
+        return {}
+
+    def parse_answer(self, text_answer) -> dict:
         if self.is_visible:
             return self._parse_answer(text_answer)
         else:
@@ -634,7 +637,7 @@ class MainPrompt(Shrinkable):
                 obs_history[-1]["chat_messages"]
             )
         else:
-            if sum([msg["role"] == "user" for msg 
+            if sum([msg["role"] == "user" for msg
                     in obs_history[-1]["chat_messages"]]) > 1:
                 logging.warning(
                     "Agent is in goal mode, but multiple user messages are "
@@ -665,8 +668,8 @@ class MainPrompt(Shrinkable):
 # Abstract Example
 
 Here is an abstract version of the answer with description of the content of
-each tag. Make sure you follow this structure, but replace the content with your
-answer:
+each tag. Make sure you follow this structure, but replace the content with
+your answer:
 {self.thought.abstract_ex}\
 {self.memory.abstract_ex}\
 {self.action_space.abstract_ex}\
@@ -690,7 +693,7 @@ Make sure to follow the template with proper tags:
 
     def _parse_answer(self, text_answer):
         ans_dict = {}
-        ans_dict.update(self.thought._parse_answer(text_answer))
-        ans_dict.update(self.memory._parse_answer(text_answer))
-        ans_dict.update(self.action_space._parse_answer(text_answer))
+        ans_dict.update(self.thought.parse_answer(text_answer))
+        ans_dict.update(self.memory.parse_answer(text_answer))
+        ans_dict.update(self.action_space.parse_answer(text_answer))
         return ans_dict
