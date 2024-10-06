@@ -105,7 +105,7 @@ class PromptElement(abc.ABC):
         else:
             return ""
 
-    def _parse_answer(self, text_answer) -> dict:
+    def _parse_answer(self, _text_answer) -> dict:
         return {}
 
     def parse_answer(self, text_answer) -> dict:
@@ -213,7 +213,8 @@ class HTML(Trunkater):
 
 
 class AXTree(Trunkater):
-    def __init__(self, ax_tree, visible: bool = True, coord_type=None, prefix="") -> None:
+    def __init__(self, ax_tree, visible: bool = True,
+                 coord_type=None, prefix="") -> None:
         super().__init__(visible=visible, start_trunkate_iteration=10)
         if coord_type == "center":
             coord_note = """\
@@ -353,7 +354,7 @@ time you submit an action it will be sent to the browser and you will receive
 a new page."""
 
 
-def _get_action_space(flags: Flags) -> AbstractActionSet:
+def get_action_space(flags: Flags) -> AbstractActionSet:
     match flags.action_space:
         case "bid":
             action_subsets = ["chat", "bid"]
@@ -386,7 +387,7 @@ class ActionSpace(PromptElement):
     def __init__(self, flags: Flags) -> None:
         super().__init__()
         self.flags = flags
-        self.action_space = _get_action_space(flags)
+        self.action_space = get_action_space(flags)
 
         self._prompt = (
             f"# Action space:\n{self.action_space.describe()}"
@@ -649,8 +650,8 @@ class MainPrompt(Shrinkable):
         self.obs = Observation(obs_history[-1], self.flags)
         self.action_space = ActionSpace(self.flags)
 
-        self.thought = Thought(visible=lambda: flags.use_thinking)
-        self.memory = Memory(visible=lambda: flags.use_memory)
+        self.thought = Thought(visible=flags.use_thinking)
+        self.memory = Memory(visible=flags.use_memory)
 
     @property
     def _prompt(self) -> str:
