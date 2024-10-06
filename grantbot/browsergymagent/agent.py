@@ -1,14 +1,15 @@
 import os
+from typing import Any, Callable
+import traceback
 from browsergym.experiments import Agent
 from browsergym.experiments.agent import AgentInfo
 from browsergym.utils.obs import flatten_axtree_to_str, prune_html
 from langchain.schema import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
-from typing import Any
 
-from llm_utils import DEFAULT_MODEL, ParseError, retry
-import dynamic_prompting
-from dynamic_prompting import Flags
+from .llm_utils import DEFAULT_MODEL, ParseError, retry
+from . import dynamic_prompting
+from .dynamic_prompting import Flags
 
 
 class WebResearchAgent(Agent):
@@ -44,7 +45,7 @@ class WebResearchAgent(Agent):
 
     def create_parser(
         self, main_prompt: dynamic_prompting.MainPrompt
-    ) -> callable[[Any], tuple[dict, bool, str]]:
+    ) -> Callable[[Any], tuple[dict, bool, str]]:
         def parser(text):
             try:
                 ans_dict = main_prompt.parse_answer(text)
@@ -88,8 +89,11 @@ class WebResearchAgent(Agent):
             ans_dict = {
                 "action": None,
                 "err_msg": str(e),
-
+                "stack_trace": traceback.format_exc(),
+                "n_retry": 4
             }
+        self.actions.append(ans_dict["action"])
+        self.memories.append(ans_dict.get("memory"))
+        self.thoughts.append(ans_dict.get("thought"))
 
-
-        return action, AgentInfo()
+        return ans_dict["action"], AgentInfo()

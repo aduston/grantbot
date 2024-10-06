@@ -20,10 +20,10 @@ materials, and participation subsidies.
 RWF_PROGRAM_NAME = "Reading with Friends"
 
 
-MAIN_PROMPT = """
+MAIN_INSTRUCTION = """
 {program_summary}
 
-We understand that {grant_maker} has funded similar programs. 
+We understand that {grant_maker} has funded similar programs.
 Please research {grant_maker} and provide the following  information:
 
 1. Grant Name (if applicable)

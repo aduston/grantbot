@@ -1,31 +1,53 @@
+"""
+A bunch of utility functions for dealing with LLMs
+"""
+
+import base64
 import io
-from langchain_core.language_models.chat_models import BaseChatModel
+import logging
+import re
+import time
 from functools import cache
+from typing import Any, Callable
+
 import numpy as np
 import tiktoken
-import base64
 from PIL import Image
+from openai import RateLimitError
+from langchain_core.language_models.chat_models import (
+    BaseChatModel, BaseMessage, HumanMessage
+)
 
 DEFAULT_MODEL = "openai/gpt-4o"
+
+logger = logging.getLogger(__name__)
+
+
+def _extract_wait_time(error_message, min_retry_wait_time=60):
+    """Extract the wait time from an OpenAI RateLimitError message."""
+    match = re.search(r"try again in (\d+(\.\d+)?)s", error_message)
+    if match:
+        return max(min_retry_wait_time, float(match.group(1)))
+    return min_retry_wait_time
 
 
 def retry(
     chat: BaseChatModel,
-    messages,
-    n_retry,
-    parser,
-    log=True,
+    messages: list[BaseMessage],
+    n_retry: int,
+    parser: Callable[[Any], tuple[dict, bool, str]],
+    log: bool = True,
     min_retry_wait_time=60,
     rate_limit_max_wait_time=60 * 30,
 ):
-    """Retry querying the chat models with the response from the parser until it
-    returns a valid value.
+    """Retry querying the chat models with the response from the parser until
+    it returns a valid value.
 
-    If the answer is not valid, it will retry and append to the chat the  retry
+    If the answer is not valid, it will retry and append to the chat the retry
     message.  It will stop after `n_retry`.
 
-    Note, each retry has to resend the whole prompt to the API. This can be slow
-    and expensive.
+    Note, each retry has to resend the whole prompt to the API. This can be
+    slow and expensive.
 
     Parameters:
     -----------
@@ -37,7 +59,8 @@ def retry(
         with the following fields:
             value : the parsed value,
             valid : a boolean indicating if the value is valid,
-            retry_message : a message to send to the chat if the value is not valid
+            retry_message : a message to send to the chat if the value is not
+                valid
         log (bool): whether to log the retry messages.
         min_retry_wait_time (float): the minimum wait time in seconds
             after RateLimtError. will try to parse the wait time from the error
@@ -49,17 +72,22 @@ def retry(
     """
     tries = 0
     rate_limit_total_delay = 0
-    while tries < n_retry and rate_limit_total_delay < rate_limit_max_wait_time:
+    while tries < n_retry and \
+            rate_limit_total_delay < rate_limit_max_wait_time:
         try:
             answer = chat.invoke(messages)
         except RateLimitError as e:
             wait_time = _extract_wait_time(e.args[0], min_retry_wait_time)
-            logging.warning(f"RateLimitError, waiting {wait_time}s before retrying.")
+            logger.warning(
+                "RateLimitError, waiting %s before retrying.", wait_time
+            )
             time.sleep(wait_time)
             rate_limit_total_delay += wait_time
             if rate_limit_total_delay >= rate_limit_max_wait_time:
-                logging.warning(
-                    f"Total wait time for rate limit exceeded. Waited {rate_limit_total_delay}s > {rate_limit_max_wait_time}s."
+                logger.warning(
+                    "Total wait time for rate limit exceeded. "
+                    "Waited %ds > %ds.",
+                    rate_limit_total_delay, rate_limit_max_wait_time
                 )
                 raise
             continue
@@ -72,8 +100,10 @@ def retry(
 
         tries += 1
         if log:
-            msg = f"Query failed. Retrying {tries}/{n_retry}.\n[LLM]:\n{answer.content}\n[User]:\n{retry_message}"
-            logging.info(msg)
+            logging.info(
+                "Query failed. Retrying %d/%d.\n[LLM]:\n%s\n[User]:\n%s",
+                tries, n_retry, answer.content, retry_message
+            )
         messages.append(HumanMessage(content=retry_message))
 
     raise ValueError(f"Could not parse a valid value after {n_retry} retries.")
@@ -116,7 +146,8 @@ def extract_html_tags(text, keys):
     Returns
     -------
     dict
-        A dictionary mapping each key to a list of subset in `text` that match the key.
+        A dictionary mapping each key to a list of subset in `text`
+        that match the key.
 
     Notes
     -----
@@ -138,8 +169,13 @@ class ParseError(Exception):
     pass
 
 
-def parse_html_tags_raise(text, keys=(), optional_keys=(), merge_multiple=False):
-    """A version of parse_html_tags that raises an exception if the parsing is not successful."""
+def parse_html_tags_raise(
+    text, keys=(), optional_keys=(), merge_multiple=False
+):
+    """
+    A version of parse_html_tags that raises an exception if the parsing is 
+    not successful.
+    """
     content_dict, valid, retry_message = parse_html_tags(
         text, keys, optional_keys, merge_multiple=merge_multiple
     )
@@ -149,7 +185,9 @@ def parse_html_tags_raise(text, keys=(), optional_keys=(), merge_multiple=False)
 
 
 def parse_html_tags(text, keys=(), optional_keys=(), merge_multiple=False):
-    """Satisfy the parse api, extracts 1 match per key and validates that all keys are present
+    """
+    Satisfy the parse api, extracts 1 match per key and validates that
+    all keys are present
 
     Parameters
     ----------
@@ -167,23 +205,27 @@ def parse_html_tags(text, keys=(), optional_keys=(), merge_multiple=False):
     bool
         Whether the parsing was successful.
     str
-        A message to be displayed to the agent if the parsing was not successful.
+        A message to be displayed to the agent if the parsing was not
+        successful.
     """
     all_keys = tuple(keys) + tuple(optional_keys)
     content_dict = extract_html_tags(text, all_keys)
     retry_messages = []
 
     for key in all_keys:
-        if not key in content_dict:
-            if not key in optional_keys:
-                retry_messages.append(f"Missing the key <{key}> in the answer.")
+        if key not in content_dict:
+            if key not in optional_keys:
+                retry_messages.append(
+                    f"Missing the key <{key}> in the answer."
+                )
         else:
             val = content_dict[key]
             content_dict[key] = val[0]
             if len(val) > 1:
                 if not merge_multiple:
                     retry_messages.append(
-                        f"Found multiple instances of the key {key}. You should have only one of them."
+                        f"Found multiple instances of the key {key}. "
+                        "You should have only one of them."
                     )
                 else:
                     # merge the multiple instances

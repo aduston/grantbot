@@ -9,7 +9,7 @@ from browsergym.core.action.highlevel import (
     AbstractActionSet,
     HighLevelActionSet
 )
-from llm_utils import (
+from browsergymagent.llm_utils import (
     DEFAULT_MODEL,
     count_tokens,
     image_to_jpg_base64_url,
@@ -376,8 +376,8 @@ def get_action_space(flags: Flags) -> AbstractActionSet:
     action_space = HighLevelActionSet(
         subsets=action_subsets,
         multiaction=flags.multi_actions,
-        strict=flags.is_strict,
-        demo_mode=flags.demo_mode,
+        strict=False,
+        demo_mode="off",
     )
 
     return action_space
@@ -633,19 +633,7 @@ class MainPrompt(Shrinkable):
         super().__init__()
         self.flags = flags
         self.history = History(obs_history, actions, memories, thoughts, flags)
-        if self.flags.enable_chat:
-            self.instructions = ChatInstructions(
-                obs_history[-1]["chat_messages"]
-            )
-        else:
-            if sum([msg["role"] == "user" for msg
-                    in obs_history[-1]["chat_messages"]]) > 1:
-                logging.warning(
-                    "Agent is in goal mode, but multiple user messages are "
-                    "present in the chat. Consider switching to "
-                    "`enable_chat=True`."
-                )
-            self.instructions = GoalInstructions(obs_history[-1]["goal"])
+        self.instructions = GoalInstructions(obs_history[-1]["goal"])
 
         self.obs = Observation(obs_history[-1], self.flags)
         self.action_space = ActionSpace(self.flags)
