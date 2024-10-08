@@ -18,7 +18,7 @@ from langchain_core.language_models.chat_models import (
     BaseChatModel, BaseMessage, HumanMessage
 )
 
-DEFAULT_MODEL = "openai/gpt-4o"
+DEFAULT_MODEL = "gpt-4o"
 
 logger = logging.getLogger(__name__)
 
