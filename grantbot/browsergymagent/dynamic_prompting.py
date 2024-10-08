@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class Flags:
-    use_html: bool = True
+    use_html: bool = False
     use_ax_tree: bool = True
     use_screenshot: bool = True
     use_thought: bool = True
@@ -627,18 +627,17 @@ class MainPrompt(Shrinkable):
         obs_history,
         actions,
         memories,
-        thoughts,
         flags: Flags,
     ) -> None:
         super().__init__()
         self.flags = flags
-        self.history = History(obs_history, actions, memories, thoughts, flags)
+        self.history = History(obs_history, actions, memories, flags)
         self.instructions = GoalInstructions(obs_history[-1]["goal"])
 
         self.obs = Observation(obs_history[-1], self.flags)
         self.action_space = ActionSpace(self.flags)
 
-        self.thought = Thought(visible=flags.use_thinking)
+        self.thought = Thought(visible=flags.use_thought)
         self.memory = Memory(visible=flags.use_memory)
 
     @property
@@ -652,8 +651,7 @@ class MainPrompt(Shrinkable):
 {self.memory.prompt}\
 """
 
-        if self.flags.use_abstract_example:
-            prompt += f"""
+        prompt += f"""
 # Abstract Example
 
 Here is an abstract version of the answer with description of the content of
@@ -664,8 +662,7 @@ your answer:
 {self.action_space.abstract_ex}\
 """
 
-        if self.flags.use_concrete_example:
-            prompt += f"""
+        prompt += f"""
 # Concrete Example
 
 Here is a concrete example of how to format your answer.

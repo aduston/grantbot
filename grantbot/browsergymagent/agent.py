@@ -3,7 +3,6 @@ from typing import Any, Callable
 import traceback
 from browsergym.experiments import Agent
 from browsergym.experiments.agent import AgentInfo
-from browsergym.utils.obs import flatten_axtree_to_str, prune_html
 from langchain.schema import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 
@@ -18,14 +17,7 @@ class WebResearchAgent(Agent):
     complete the goal.
     """
 
-    def obs_preprocessor(self, obs: dict) -> dict:
-        return {
-            "goal": obs["goal"],
-            "axtree_txt": flatten_axtree_to_str(obs["axtree_object"]),
-            "pruned_html": prune_html(obs["dom_txt"])
-        }
-
-    def __init__(self, goal: str, flags: Flags, 
+    def __init__(self, goal: str, flags: Flags,
                  model_name: str = DEFAULT_MODEL) -> None:
         super().__init__()
         self.goal = goal
@@ -67,7 +59,6 @@ class WebResearchAgent(Agent):
             self.obs_history,
             self.actions,
             self.memories,
-            self.thoughts,
             self.flags
         )
         sys_msg = dynamic_prompting.SystemPrompt().prompt
