@@ -1,3 +1,7 @@
 {
-    "python.envFile": "${workspaceFolder}/.env"
+    "python.envFile": "${workspaceFolder}/.env",
+    "pylint.args": [
+        "--init-hook",
+        "import sys; sys.path.append('${workspaceFolder}/grantbot')"
+    ],
 }
