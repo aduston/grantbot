@@ -1,8 +1,7 @@
-from dataclasses import dataclass
+from pydantic import BaseModel
 
 
-@dataclass
-class GrantInformation:
+class GrantInformation(BaseModel):
     grant_maker: str
     grant_name: str | None
     grant_link: str
