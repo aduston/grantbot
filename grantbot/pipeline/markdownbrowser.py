@@ -5,7 +5,6 @@ from autogen_magentic_one.markdown_browser.requests_markdown_browser import Requ
 from openai import OpenAI
 from openai.types.completion_usage import CompletionUsage
 from pydantic import BaseModel
-from typing import Tuple
 from multiprocessing import Pool
 
 openai_client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
@@ -34,6 +33,10 @@ class ResearchLinkWithQuotesResult:
     usage: CompletionUsage
     link: str
 
+@dataclass
+class ResearchReport:
+    report: str # in markdown format
+    token_count: TokenCount
 
 def obtain_search_results(grant_maker: str) -> list[SearchResult]:
     queries = [
@@ -93,7 +96,7 @@ def research_link_with_quotes(grant_maker: str, link: str, instruction: str) -> 
         "Do not use any external resources. "
         "Reply with a list of answers to the questions in the task, and try to accompany each fact with a "
         "verbatim quote from the page content that supports the answer. "
-        "The response needs to consist of a json object int he following format:\n\n"
+        "The response needs to consist of a json object in the following format:\n\n"
         '{"answers_with_quotes": ["answer": "answer1", "quote": "quote1"], ["answer": "answer2", "quote": "quote2"]}' 
         "\n\n"
         "If there's an answer you can't find a quote for, just make the quote null. "
@@ -113,13 +116,13 @@ def research_link_with_quotes(grant_maker: str, link: str, instruction: str) -> 
         response_format=AnswersWithQuotes
     )
     return ResearchLinkWithQuotesResult(
-        completion.choices[0].message.parse.answers_with_quotes, 
+        completion.choices[0].message.parsed.answers_with_quotes, 
         completion.usage,
         link
     )
 
 
-def generate_grantmaker_research_report(grant_maker: str, instruction: str) -> str:
+def generate_grantmaker_research_report(grant_maker: str, instruction: str) -> ResearchReport:
     """
     Generates a grantmaker research report in Markdown format.
     """
@@ -132,5 +135,57 @@ def generate_grantmaker_research_report(grant_maker: str, instruction: str) -> s
     total_completion_tokens = sum([r.usage.completion_tokens for r in research_responses])
     total_prompt_tokens = sum([r.usage.prompt_tokens for r in research_responses])
     system_prompt = (
-        
+        "You are an expert web researcher who specializes in researching grants. "
+        "Given a task and a list of web pages, you have looked at each page individually "
+        "and used it to answer questions in the task. When possible, you quoted page "
+        "content to support your answer. You must now synthesize the "
+        "individual answers into a report in Markdown format that addresses all "
+        "questions in the task.\n\n"
+        "When possible, add footnotes to your Markdown, quoting sources. Use the "
+        "Markdown footnote syntax. "
+        "Each footnote should include a link to the source page and the text of "
+        "the quote that supports the information."
     )
+    user_prompt = (
+        f"<TASK>\n{instruction}\n</TASK>\n"
+        f"<YOUR_ANSWERS>\n{research_results_prompt(research_responses)}\n</YOUR_ANSWERS>\n"
+    )
+    completion  = openai_client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            { "role": "system", "content": system_prompt },
+            { "role": "user", "content": user_prompt},
+        ],
+    )
+    report = completion.choices[0].message.content
+    usage = completion.usage
+    return ResearchReport(
+        report=report, 
+        token_count=TokenCount(
+            total_completion_tokens + usage.completion_tokens, 
+            total_prompt_tokens + usage.prompt_tokens
+        )
+    )
+
+
+def research_results_prompt(result: list[ResearchLinkWithQuotesResult]) -> str:
+    prompt_lines = []
+    for r in result:
+        prompt_lines.append(f"# Answers from {r.link}")
+        for a in r.answers_with_quotes:
+            quote = '(none)' if a.quote is None else f'"{a.quote}"'
+            prompt_lines.append(f"**Answer:** {a.answer}")
+            prompt_lines.append(f"**Quote:** {quote}")
+    return "\n\n".join(prompt_lines)
+
+if __name__ == '__main__':
+    from langchain.prompts import PromptTemplate
+    from sample_data import MAIN_INSTRUCTION, RWF_PROGRAM_NAME, RWF_SUMMARY
+
+    grant_maker = "The Morris and Gwendolyn Cafritz Foundation"
+    instruction = PromptTemplate.from_template(MAIN_INSTRUCTION).format(
+        program_summary=RWF_SUMMARY, program_name=RWF_PROGRAM_NAME,
+        grant_maker="The Morris and Gwendolyn Cafritz Foundation"
+    )
+    report = generate_grantmaker_research_report(grant_maker, instruction)
+    print(report)
