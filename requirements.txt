@@ -1,7 +1,8 @@
-git+https://github.com/microsoft/autogen.git@v0.4.0dev0#egg=autogen-core&subdirectory=python/packages/autogen-core
-git+https://github.com/microsoft/autogen.git@v0.4.0dev0#egg=autogen-agentchat&subdirectory=python/packages/autogen-agentchat
+git+https://github.com/microsoft/autogen.git@v0.4.0dev0#egg=autogen-magentic-one&subdirectory=python/packages/autogen-magentic-one
 langchain==0.3.1
 browsergym==0.7.1
 langchain-openai==0.2.2
 aiohttp==3.10.9
 pydantic==2.9.2
+langchain-google-community==2.0.1
+google-api-python-client==2.149.0

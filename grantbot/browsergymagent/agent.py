@@ -87,4 +87,4 @@ class WebResearchAgent(Agent):
         self.memories.append(ans_dict.get("memory"))
         self.thoughts.append(ans_dict.get("think"))
 
-        return ans_dict["action"], AgentInfo()
+        return ans_dict["action"], AgentInfo(ans_dict.get("think"), chat_messages)

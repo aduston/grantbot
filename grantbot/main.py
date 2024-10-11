@@ -18,7 +18,7 @@ def browsergymagent_main(start_url: str, agent_instruction: str) -> None:
     done = False
     agent = WebResearchAgent(agent_instruction, Flags())
     while not done:
-        action = agent.get_action(agent.obs_preprocessor(obs))
+        action, agent_info = agent.get_action(agent.obs_preprocessor(obs))
         obs, _reward, terminated, truncated, _info = env.step(action)
         done = terminated or truncated
 

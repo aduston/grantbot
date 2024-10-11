@@ -17,6 +17,8 @@ from browsergymagent.llm_utils import (
     ParseError
 )
 
+HTML_TYPE = "pruned_html"
+
 logger = logging.getLogger(__name__)
 
 
@@ -27,7 +29,7 @@ class Flags:
     use_screenshot: bool = True
     use_thought: bool = True
     use_history: bool = True
-    use_memory: bool = False
+    use_memory: bool = True
     use_error_logs: bool = True
     use_past_error_logs: bool = True
     use_action_history: bool = True
@@ -246,7 +248,7 @@ class Observation(Shrinkable):
         self.flags = flags
         self.obs = obs
         self.html = HTML(
-            obs["pruned_html"], visible=flags.use_html, prefix="## "
+            obs[HTML_TYPE], visible=flags.use_html, prefix="## "
         )
         self.ax_tree = AXTree(
             obs["axtree_txt"],
@@ -533,8 +535,8 @@ class HistoryStep(Shrinkable):
     ) -> None:
         super().__init__()
         self.html_diff = Diff(
-            previous_obs[flags.html_type],
-            current_obs[flags.html_type],
+            previous_obs[HTML_TYPE],
+            current_obs[HTML_TYPE],
             prefix="\n### HTML diff:\n",
             shrink_speed=shrink_speed,
             visible=flags.use_html and flags.use_diff,

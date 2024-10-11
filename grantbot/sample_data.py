@@ -23,23 +23,26 @@ RWF_PROGRAM_NAME = "Reading with Friends"
 MAIN_INSTRUCTION = """
 {program_summary}
 
-We understand that {grant_maker} has funded similar programs.
-Please research {grant_maker} and provide the following  information:
+Answer the following questions:
 
-1. Grant Name (if applicable)
-2. Grant Link
+1. What is the grant name? (if applicable)
+2. What is the grant link?
 
 If it looks like the '{program_name}' program is not a good match
-for this grantmaker, please provide a brief explanation. If it
-looks like a potentially good match, please also provide the
-following information:
+for this grantmaker, please answer the following question:
 
-1. Grant Amount. This might be a range or a specific amount, or some other
+Why is the '{program_name}' program not a good match for this grantmaker? 
+
+If it looks like a potentially good match, please also answer the following
+questions:
+
+1. What is the grant amount? This might be a range or a specific amount, or some other
    short description.
-2. Eligibility Criteria
-3. Application Deadline. Oftentimes there are multiple deadlines throughout the
+2. What are the eligibility criteria?
+3. What's the application deadline? Oftentimes there are multiple deadlines throughout the
    year. Just briefly describe how this grantmaker organizes their deadlines.
-4. Any additional notes or considerations for applicants.
-5. The application procedure. Please comment specifically on
+4. Are there any additional notes or considerations for applicants?
+5. What is the application procedure? Please comment specifically on
     whether the application can be submitted online.
+6. What is the link to apply for the grant?
 """
