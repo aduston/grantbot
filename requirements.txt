@@ -6,3 +6,4 @@ aiohttp==3.10.9
 pydantic==2.9.2
 langchain-google-community==2.0.1
 google-api-python-client==2.149.0
+pyre-extensions==0.0.31

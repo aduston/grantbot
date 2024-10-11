@@ -4,8 +4,10 @@ from langchain_google_community import GoogleSearchAPIWrapper
 from autogen_magentic_one.markdown_browser.requests_markdown_browser import RequestsMarkdownBrowser
 from openai import OpenAI
 from openai.types.completion_usage import CompletionUsage
+from openai.types.chat.chat_completion_message_param import ChatCompletionMessageParam
 from pydantic import BaseModel
 from multiprocessing import Pool
+from pyre_extensions import none_throws
 
 openai_client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
@@ -31,7 +33,7 @@ class AnswersWithQuotes(BaseModel):
 class ResearchLinkWithQuotesResult:
     answers_with_quotes: list[AnswerWithQuote]
     usage: CompletionUsage
-    link: str
+    search_result: SearchResult
 
 @dataclass
 class ResearchReport:
@@ -43,6 +45,7 @@ def obtain_search_results(grant_maker: str) -> list[SearchResult]:
         f"{grant_maker} grants",
         f"{grant_maker} grant eligibility criteria",
         f"{grant_maker} grant application procedure",
+        f"{grant_maker} recent grants education",
     ]
     all_results = {}
     for query in queries:
@@ -83,11 +86,11 @@ def research_link(grant_maker: str, link: str, instruction: str) -> str:
             { "role": "user", "content": user_prompt},
         ],
     )
-    return completion.choices[0].message.content
+    return none_throws(completion.choices[0].message.content)
 
-def research_link_with_quotes(grant_maker: str, link: str, instruction: str) -> ResearchLinkWithQuotesResult:
+def research_link_with_quotes(grant_maker: str, search_result: SearchResult, instruction: str) -> ResearchLinkWithQuotesResult:
     browser = RequestsMarkdownBrowser(viewport_size=1024 * 32)
-    page_content = browser.visit_page(link)
+    page_content = browser.visit_page(search_result.link)
     system_prompt = (
         "You are an expert web researcher who specializes in researching grants. "
         "A Google search has returned a web page. "
@@ -116,10 +119,40 @@ def research_link_with_quotes(grant_maker: str, link: str, instruction: str) -> 
         response_format=AnswersWithQuotes
     )
     return ResearchLinkWithQuotesResult(
-        completion.choices[0].message.parsed.answers_with_quotes, 
-        completion.usage,
-        link
+        none_throws(completion.choices[0].message.parsed).answers_with_quotes, 
+        none_throws(completion.usage),
+        search_result
     )
+
+def research_link_with_quotes_prompt(
+        grant_maker: str, 
+        search_result: SearchResult, 
+        instruction: str) -> list[ChatCompletionMessageParam]:
+    browser = RequestsMarkdownBrowser(viewport_size=1024 * 32)
+    page_content = browser.visit_page(search_result.link)
+    system_prompt = (
+        "You are an expert web researcher who specializes in researching grants. "
+        "A Google search has returned a web page. "
+        "You will be given a task and the returned web page in markdown format. "
+        "Given the page content alone, answer the questions in the task. Rely on the page content alone. "
+        "Do not use any external resources. "
+        "Reply with a list of answers to the questions in the task, and try to accompany each fact with a "
+        "verbatim quote from the page content that supports the answer. "
+        "The response needs to consist of a json object in the following format:\n\n"
+        '{"answers_with_quotes": ["answer": "answer1", "quote": "quote1"], ["answer": "answer2", "quote": "quote2"]}' 
+        "\n\n"
+        "If there's an answer you can't find a quote for, just make the quote null. "
+        "If there's a question you can't answer, just omit it from your response."
+    )
+    user_prompt = (
+        f"<GOOGLE_SEARCH_QUERY>{grant_maker} grants</GOOGLE_SEARCH_QUERY>\n"
+        f"<TASK>\n{instruction}\n</TASK>\n"
+        f"<WEB_PAGE_CONTENT>\n{page_content}\n</WEB_PAGE_CONTENT>\n"
+    )
+    return [
+        { "role": "system", "content": system_prompt },
+        { "role": "user", "content": user_prompt},
+    ]
 
 
 def generate_grantmaker_research_report(grant_maker: str, instruction: str) -> ResearchReport:
@@ -157,8 +190,8 @@ def generate_grantmaker_research_report(grant_maker: str, instruction: str) -> R
             { "role": "user", "content": user_prompt},
         ],
     )
-    report = completion.choices[0].message.content
-    usage = completion.usage
+    report = none_throws(completion.choices[0].message.content)
+    usage = none_throws(completion.usage)
     return ResearchReport(
         report=report, 
         token_count=TokenCount(
@@ -182,7 +215,8 @@ if __name__ == '__main__':
     from langchain.prompts import PromptTemplate
     from sample_data import MAIN_INSTRUCTION, RWF_PROGRAM_NAME, RWF_SUMMARY
 
-    grant_maker = "The Morris and Gwendolyn Cafritz Foundation"
+    # grant_maker = "The Morris and Gwendolyn Cafritz Foundation"
+    grant_maker = "Costco"
     instruction = PromptTemplate.from_template(MAIN_INSTRUCTION).format(
         program_summary=RWF_SUMMARY, program_name=RWF_PROGRAM_NAME,
         grant_maker="The Morris and Gwendolyn Cafritz Foundation"

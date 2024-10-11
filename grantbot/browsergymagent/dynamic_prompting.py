@@ -183,6 +183,8 @@ def fit_tokens(
     if max_prompt_tokens is None:
         return shrinkable.prompt
 
+    prompt_str = None
+
     for _ in range(max_iterations):
         prompt = shrinkable.prompt
         if isinstance(prompt, str):
