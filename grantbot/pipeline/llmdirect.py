@@ -15,13 +15,13 @@ from functools import cache
 from typing_extensions import TypeAlias
 import tiktoken
 import logging
+from browsers import RequestsBrowser, PlaywrightBrowser
 
 openai_client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 MODEL = "gpt-4o"
 
 ChatMessage: TypeAlias = ChatCompletionSystemMessageParam | ChatCompletionUserMessageParam
 
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
@@ -116,8 +116,8 @@ def research_link_messages(
         link: str,
         instruction: str) -> list[ChatMessage]:
     logger.debug(f"Obtaining page content for {link}")
-    browser = RequestsMarkdownBrowser(requests_get_kwargs={"timeout": 15})
-    page_content = browser.visit_page(link)
+    browser = PlaywrightBrowser()
+    page_content = browser.obtain_markdown(link)
     logger.debug(f"Page content for {link} is {len(page_content)} characters")
     system_prompt = (
         "You are an expert web researcher who specializes in researching grants. "
@@ -148,13 +148,11 @@ def research_links_messages(
         grant_maker: str,
         links: list[str],
         instruction: str) -> dict[str, list[ChatMessage]]:
-    # with Pool(15) as p:
-    #     message_lists = p.starmap(
-    #         research_link_messages,
-    #         [(grant_maker, link, instruction) for link in links]
-    #     )
-    message_lists = [research_link_messages(
-        grant_maker, link, instruction) for link in links]
+    with Pool(15) as p:
+        message_lists = p.starmap(
+            research_link_messages,
+            [(grant_maker, link, instruction) for link in links]
+        )
     return dict(zip(links, message_lists))
 
 
@@ -245,7 +243,7 @@ if __name__ == '__main__':
         grant_maker="The Morris and Gwendolyn Cafritz Foundation"
     )
     search_results = obtain_search_results(grant_maker)
-    links = [r.link for r in search_results]
+    links = [r.link for r in search_results if not r.link.endswith(".pdf")]
     messages_dict = research_links_messages(
         grant_maker, links, instruction)
     pprint({link: count_message_tokens(messages)
