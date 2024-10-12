@@ -9,6 +9,8 @@ from langchain_openai import ChatOpenAI
 from .llm_utils import DEFAULT_MODEL, ParseError, retry
 from . import dynamic_prompting
 from .dynamic_prompting import Flags
+from pyre_extensions import none_throws
+from pydantic import SecretStr
 
 
 class WebResearchAgent(Agent):
@@ -24,8 +26,8 @@ class WebResearchAgent(Agent):
         self.flags = flags
         self.model_name = model_name
         self.chat_llm = ChatOpenAI(
-            model_name=DEFAULT_MODEL,
-            api_key=os.getenv("OPENAI_API_KEY"),
+            model=DEFAULT_MODEL,
+            api_key=SecretStr(os.environ["OPENAI_API_KEY"]),
             temperature=0.1,
             max_tokens=2000,
         )
@@ -38,13 +40,13 @@ class WebResearchAgent(Agent):
     def create_parser(
         self, main_prompt: dynamic_prompting.MainPrompt
     ) -> Callable[[Any], tuple[dict, bool, str]]:
-        def parser(text):
+        def parser(text: Any) -> tuple[dict, bool, str]:
             try:
                 ans_dict = main_prompt.parse_answer(text)
             except ParseError as e:
                 # these parse errors will be caught by the retry function and
                 # the chat_llm will have a chance to recover
-                return None, False, str(e)
+                return {}, False, str(e)
 
             return ans_dict, True, ""
         return parser

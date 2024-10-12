@@ -12,7 +12,7 @@ def browsergymagent_main(start_url: str, agent_instruction: str) -> None:
         task_kwargs={"start_url": start_url, "goal": agent_instruction},
         # wait for a user message after each agent message sent to the chat
         wait_for_user_message=False,
-        headless=False,
+        headless=True,
     )
     obs, _info = env.reset()
     done = False
@@ -26,9 +26,9 @@ def browsergymagent_main(start_url: str, agent_instruction: str) -> None:
 if __name__ == '__main__':
     instruction = PromptTemplate.from_template(MAIN_INSTRUCTION).format(
         program_summary=RWF_SUMMARY, program_name=RWF_PROGRAM_NAME,
-        grant_maker="The Morris and Gwendolyn Cafritz Foundation"
+        grant_maker="Costco"
     )
     browsergymagent_main(
-        "https://www.cafritzfoundation.org/",
+        "https://www.costco.com/charitable-giving.html",
         instruction,
     )

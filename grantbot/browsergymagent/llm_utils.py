@@ -14,9 +14,9 @@ import numpy as np
 import tiktoken
 from PIL import Image
 from openai import RateLimitError
-from langchain_core.language_models.chat_models import (
-    BaseChatModel, BaseMessage, HumanMessage
-)
+from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.messages.base import BaseMessage
+from langchain_core.messages.human import HumanMessage
 
 DEFAULT_MODEL = "gpt-4o"
 
