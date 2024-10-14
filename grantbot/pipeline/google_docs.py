@@ -10,8 +10,13 @@ def upload_markdown_to_gdoc(markdown: str, output_file_name: str) -> str:
     Returns : Id's of the file uploaded
 
     Load pre-authorized user credentials from the environment.
-    TODO(developer) - See https://developers.google.com/identity
-    for guides on implementing OAuth2 for the application.
+    What I had to do:
+
+    gcloud auth application-default login \
+        --scopes=openid,https://www.googleapis.com/auth/userinfo.email,\
+            https://www.googleapis.com/auth/cloud-platform,\
+                https://www.googleapis.com/auth/drive.file
+    gcloud auth application-default set-quota-project aad-personal
     """
     creds, _ = google.auth.default()
     service = build('drive', 'v3', credentials=creds)
