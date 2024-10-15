@@ -158,6 +158,8 @@ def research_links_messages(
 
 def generate_research_responses(grant_maker: str, instruction: str) -> list[ResearchLinkWithQuotesResult]:
     search_results = obtain_search_results(grant_maker)
+    # maybe in future actually process PDFs. For now, remove them.
+    search_results = [r for r in search_results if not r.link.endswith(".pdf")]
     search_results_dict = {r.link: r for r in search_results}
     messages_dict = research_links_messages(
         grant_maker, list(search_results_dict.keys()), instruction)
@@ -236,15 +238,12 @@ if __name__ == '__main__':
 
     logger.info("Starting")
 
-    # grant_maker = "The Morris and Gwendolyn Cafritz Foundation"
-    grant_maker = "Costco"
+    grant_maker = "The Morris and Gwendolyn Cafritz Foundation"
+    # grant_maker = "Costco"
     instruction = PromptTemplate.from_template(MAIN_INSTRUCTION).format(
         program_summary=RWF_SUMMARY, program_name=RWF_PROGRAM_NAME,
-        grant_maker="The Morris and Gwendolyn Cafritz Foundation"
+        grant_maker=grant_maker
     )
-    search_results = obtain_search_results(grant_maker)
-    links = [r.link for r in search_results if not r.link.endswith(".pdf")]
-    messages_dict = research_links_messages(
-        grant_maker, links, instruction)
-    pprint({link: count_message_tokens(messages)
-           for link, messages in messages_dict.items()})
+    research_report = generate_grantmaker_research_report(
+        grant_maker, instruction)
+    print(research_report.report)
